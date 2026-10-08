@@ -1,7 +1,13 @@
 package main;
 
+import ui.LoginWindow;
+import javax.swing.SwingUtilities;
+
 public class Main {
-    static void main() {
-        System.out.println("Hello World !");
+    public static void main(String[] args) {
+        // Run the GUI on the Event Dispatch Thread (Best practice for Swing)
+        SwingUtilities.invokeLater(() -> {
+            new LoginWindow();
+        });
     }
 }
