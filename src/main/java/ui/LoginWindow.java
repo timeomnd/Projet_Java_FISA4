@@ -75,6 +75,8 @@ public class LoginWindow extends BaseWindow implements ActionListener {
 
                     this.dispose(); // Close the login window
 
+                    new DashboardWindow();
+
                     // Here we will launch the DashboardWindow later
                 } else {
                     JOptionPane.showMessageDialog(this,
@@ -84,10 +86,8 @@ public class LoginWindow extends BaseWindow implements ActionListener {
                 }
             }
         } else if (e.getSource() == registerButton) {
-            JOptionPane.showMessageDialog(this,
-                    "The registration window will be available soon.",
-                    "Information",
-                    JOptionPane.INFORMATION_MESSAGE);
+            this.dispose(); // Close the actuel login window
+            new RegistrationWindow(); // Open the registration window
         }
     }
 }
