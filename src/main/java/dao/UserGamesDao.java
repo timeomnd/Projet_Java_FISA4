@@ -1,7 +1,9 @@
 package dao;
+import models.dto.GameDetailsDto;
 import models.dto.UserGameDto;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 
 public class UserGamesDao {
@@ -50,6 +52,70 @@ public class UserGamesDao {
         } catch (SQLException e) {
             System.out.println("Error while saving the user's game: " + e.getMessage());
         }
+        return false;
+    }
+    // Method to fetch all details needed for the Game Stats Window
+    public GameDetailsDto getUserGameDetails(int idAuthentication, int idGames) {
+        // Query joining both tables to get the game's static info and the user's specific stats
+        String query = "SELECT g.title, g.cover, ug.played, ug.platinum, ug.`100%`, " +
+                "ug.game_rating, ug.platinum_difficulty, ug.time_played_hours " +
+                "FROM user_games ug " +
+                "JOIN games g ON ug.id_games = g.id " +
+                "WHERE ug.id_authentication = ? AND ug.id_games = ?";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setInt(1, idAuthentication);
+            stmt.setInt(2, idGames);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    // Extract data from the result set
+                    String title = rs.getString("title");
+                    String cover = rs.getString("cover");
+                    boolean played = rs.getBoolean("played");
+                    boolean platinum = rs.getBoolean("platinum");
+                    boolean is100Percent = rs.getBoolean("100%");
+
+                    // Handle potential null values for numbers using getObject
+                    Integer rating = (Integer) rs.getObject("game_rating");
+                    Integer difficulty = (Integer) rs.getObject("platinum_difficulty");
+                    // Using Number to safely cast decimals from SQL to Double in Java
+                    Number timeNumber = (Number) rs.getObject("time_played_hours");
+                    Double timePlayed = (timeNumber != null) ? timeNumber.doubleValue() : null;
+
+                    // Return the fully populated DTO to the frontend
+                    return new GameDetailsDto(title, cover, played, platinum, is100Percent, rating, difficulty, timePlayed);
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error while fetching game details: " + e.getMessage());
+        }
+
+        // Return null if the user hasn't added this game to their list yet
+        return null;
+    }
+    // Checks if the user has already marked this specific game as 'played'
+    public boolean isGameAlreadyPlayed(int idAuthentication, int idGames) {
+        String query = "SELECT played FROM user_games WHERE id_authentication = ? AND id_games = ?";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setInt(1, idAuthentication);
+            stmt.setInt(2, idGames);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    // Return the true/false value of the 'played' column
+                    return rs.getBoolean("played");
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error checking if game is played: " + e.getMessage());
+        }
+        // If the row doesn't exist, the game hasn't been played
         return false;
     }
 }
