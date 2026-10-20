@@ -4,6 +4,8 @@ import models.Game;
 import models.UserGameDetail;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -14,6 +16,10 @@ public class AddGameWindow extends BaseWindow implements ActionListener {
     private DashboardWindow dashboard;
 
     private JTextField titleField;
+    private JPopupMenu suggestionMenu;
+    private Game selectedCatalogGame = null;
+    private boolean isSelecting = false; // Sécurité pour le clic
+
     private JCheckBox playedCheck;
     private JCheckBox platinumCheck;
     private JCheckBox hundredPercentCheck;
@@ -21,10 +27,9 @@ public class AddGameWindow extends BaseWindow implements ActionListener {
     private JSpinner difficultySpinner;
     private JTextField timePlayedField;
 
-    // Nouveaux composants pour la jaquette
     private JButton chooseCoverButton;
     private JLabel coverPathLabel;
-    private String selectedCoverPath = null; // Par défaut, null
+    private String selectedCoverPath = null;
 
     private JButton saveButton;
     private JButton cancelButton;
@@ -41,13 +46,25 @@ public class AddGameWindow extends BaseWindow implements ActionListener {
         JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
         mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        JPanel formPanel = new JPanel(new GridLayout(8, 2, 10, 15)); // Passé à 8 lignes
+        JPanel formPanel = new JPanel(new GridLayout(8, 2, 10, 15));
 
         formPanel.add(new JLabel("Game Title:"));
         titleField = new JTextField();
+        suggestionMenu = new JPopupMenu();
+
+        // CORRECTION 1 : Force le menu à être par-dessus tout (empêche le bouton Browse de voler le clic)
+        suggestionMenu.setLightWeightPopupEnabled(false);
+        suggestionMenu.setFocusable(false);
+
+        // CORRECTION 2 : DocumentListener pour un filtre 100% en temps réel
+        titleField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e) { filterSuggestions(); }
+            @Override public void removeUpdate(DocumentEvent e) { filterSuggestions(); }
+            @Override public void changedUpdate(DocumentEvent e) { filterSuggestions(); }
+        });
+
         formPanel.add(titleField);
 
-        // --- NOUVEAU : Champ pour choisir l'image ---
         formPanel.add(new JLabel("Cover Image:"));
         JPanel coverPanel = new JPanel(new BorderLayout(5, 0));
         chooseCoverButton = new JButton("Browse...");
@@ -58,7 +75,6 @@ public class AddGameWindow extends BaseWindow implements ActionListener {
         coverPanel.add(chooseCoverButton, BorderLayout.WEST);
         coverPanel.add(coverPathLabel, BorderLayout.CENTER);
         formPanel.add(coverPanel);
-        // ---------------------------------------------
 
         formPanel.add(new JLabel("Played:"));
         playedCheck = new JCheckBox();
@@ -97,8 +113,57 @@ public class AddGameWindow extends BaseWindow implements ActionListener {
         buttonPanel.add(cancelButton);
 
         mainPanel.add(buttonPanel, BorderLayout.SOUTH);
-
         this.add(mainPanel);
+    }
+
+    // Méthode appelée à chaque milliseconde où le texte change
+    private void filterSuggestions() {
+        if (isSelecting) return; // Si on vient de cliquer sur un jeu, on ne relance pas le filtre
+
+        // On utilise invokeLater pour ne pas bloquer l'interface graphique pendant la frappe
+        SwingUtilities.invokeLater(() -> {
+            selectedCatalogGame = null;
+            chooseCoverButton.setEnabled(true);
+            coverPathLabel.setText(" Default");
+
+            String text = titleField.getText().trim().toLowerCase();
+            suggestionMenu.removeAll();
+
+            if (text.isEmpty()) {
+                suggestionMenu.setVisible(false);
+                return;
+            }
+
+            boolean found = false;
+            for (Game g : dashboard.getGlobalCatalog()) {
+                String lowerTitle = g.getTitle().toLowerCase();
+
+                if (lowerTitle.startsWith(text) || lowerTitle.contains(" " + text)) {
+                    JMenuItem item = new JMenuItem(g.getTitle());
+
+                    // On utilise le vrai ActionListener, le clic est maintenant garanti
+                    item.addActionListener(ev -> {
+                        isSelecting = true;
+                        titleField.setText(g.getTitle());
+                        selectedCatalogGame = g;
+                        coverPathLabel.setText(" [Cover from Database]");
+                        chooseCoverButton.setEnabled(false);
+                        suggestionMenu.setVisible(false);
+                        isSelecting = false;
+                    });
+
+                    suggestionMenu.add(item);
+                    found = true;
+                }
+            }
+
+            if (found) {
+                suggestionMenu.pack(); // Ajuste la taille de la boîte
+                suggestionMenu.show(titleField, 0, titleField.getHeight());
+            } else {
+                suggestionMenu.setVisible(false);
+            }
+        });
     }
 
     @Override
@@ -107,15 +172,11 @@ public class AddGameWindow extends BaseWindow implements ActionListener {
             this.dispose();
         }
         else if (e.getSource() == chooseCoverButton) {
-            // Ouvre l'explorateur de fichiers de l'utilisateur
             JFileChooser fileChooser = new JFileChooser();
-            // Filtre pour n'accepter que les images
             fileChooser.setFileFilter(new FileNameExtensionFilter("Images (JPG, PNG)", "jpg", "jpeg", "png"));
-
-            int result = fileChooser.showOpenDialog(this);
-            if (result == JFileChooser.APPROVE_OPTION) {
+            if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
                 selectedCoverPath = fileChooser.getSelectedFile().getAbsolutePath();
-                coverPathLabel.setText(" " + fileChooser.getSelectedFile().getName()); // Affiche juste le nom
+                coverPathLabel.setText(" " + fileChooser.getSelectedFile().getName());
             }
         }
         else if (e.getSource() == saveButton) {
@@ -125,32 +186,45 @@ public class AddGameWindow extends BaseWindow implements ActionListener {
 
     private void saveGame() {
         String title = titleField.getText().trim();
-
         if (title.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Please enter a game title.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
+        }
+
+        for (UserGameDetail detail : dashboard.getLibrary()) {
+            if (selectedCatalogGame != null) {
+                if (detail.getGame().getId() == selectedCatalogGame.getId()) {
+                    JOptionPane.showMessageDialog(this, "This game is already in your Library or Wishlist!", "Duplicate Entry", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+            } else {
+                if (detail.getGame().getTitle().equalsIgnoreCase(title)) {
+                    JOptionPane.showMessageDialog(this, "You already have a game with this title!", "Duplicate Entry", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+            }
         }
 
         double timePlayed = 0.0;
         try {
             timePlayed = Double.parseDouble(timePlayedField.getText().trim());
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Please enter a valid number for Time Played.", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Invalid number for Time Played.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        int rating = (int) ratingSpinner.getValue();
-        int difficulty = (int) difficultySpinner.getValue();
-        int newId = dashboard.getLibrarySize() + 1;
-
-        // Si l'utilisateur n'a rien choisi, on garde l'image par défaut
-        String finalCoverPath = (selectedCoverPath != null) ? selectedCoverPath : "/covers/default.jpeg";
-
-        Game newGame = new Game(newId, title, finalCoverPath);
+        Game finalGameToSave;
+        if (selectedCatalogGame != null) {
+            finalGameToSave = selectedCatalogGame;
+        } else {
+            int newId = dashboard.getLibrarySize() + 100;
+            String finalCoverPath = (selectedCoverPath != null) ? selectedCoverPath : "/covers/default.jpeg";
+            finalGameToSave = new Game(newId, title, finalCoverPath);
+        }
 
         UserGameDetail newDetail = new UserGameDetail(
-                newId, playedCheck.isSelected(), platinumCheck.isSelected(), hundredPercentCheck.isSelected(),
-                false, false, rating, difficulty, timePlayed, null, newGame
+                finalGameToSave.getId(), playedCheck.isSelected(), platinumCheck.isSelected(), hundredPercentCheck.isSelected(),
+                false, false, (int) ratingSpinner.getValue(), (int) difficultySpinner.getValue(), timePlayed, null, finalGameToSave
         );
 
         dashboard.addGameToLibrary(newDetail);

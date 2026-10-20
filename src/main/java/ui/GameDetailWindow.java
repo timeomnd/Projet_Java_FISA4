@@ -106,7 +106,7 @@ public class GameDetailWindow extends BaseWindow {
         ratingLabel.setText("Rating: " + gameDetail.getGameRating() + " / 10");
         difficultyLabel.setText("Platinum Difficulty: " + gameDetail.getPlatinumDifficulty() + " / 10");
         timePlayedLabel.setText("Time Played: " + gameDetail.getTimePlayedHours() + " hours");
-            
+
         // Load Image (handles both internal resources and local PC files)
         try {
             ImageIcon originalIcon = null;
