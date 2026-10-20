@@ -164,35 +164,38 @@ public class WishlistWindow extends BaseWindow implements ActionListener {
             if (result == JOptionPane.OK_OPTION) {
                 String title = titleField.getText().trim();
                 if (!title.isEmpty()) {
-                    for (UserGameDetail detail : dashboard.getLibrary()) {
-                        if (selectedCatalogGame[0] != null) {
-                            if (detail.getGame().getId() == selectedCatalogGame[0].getId()) {
-                                JOptionPane.showMessageDialog(this, "Game already in Library/Wishlist!", "Duplicate", JOptionPane.WARNING_MESSAGE);
-                                return;
-                            }
-                        } else {
-                            if (detail.getGame().getTitle().equalsIgnoreCase(title)) {
-                                JOptionPane.showMessageDialog(this, "Game already in Library/Wishlist!", "Duplicate", JOptionPane.WARNING_MESSAGE);
-                                return;
-                            }
-                        }
-                    }
 
-                    Game finalGame;
+                    int targetGameId;
+
                     if (selectedCatalogGame[0] != null) {
-                        finalGame = selectedCatalogGame[0];
+                        targetGameId = selectedCatalogGame[0].getId();
                     } else {
+                        // Create custom game
                         String finalCover = (selectedPath[0] != null) ? selectedPath[0] : "/covers/default.jpeg";
-                        finalGame = new Game(dashboard.getLibrarySize() + 100, title, finalCover);
+                        targetGameId = new dao.GameDao().addCustomGame(title, finalCover);
                     }
 
-                    UserGameDetail newDetail = new UserGameDetail(
-                            finalGame.getId(), false, false, false,
-                            true, platCheck.isSelected(), 0, 0, 0.0, null, finalGame
+                    dao.UserGamesDao userGamesDao = new dao.UserGamesDao();
+
+                    // Security block: check if played
+                    if(userGamesDao.isGameAlreadyPlayed(dashboard.getActiveUserId(), targetGameId)) {
+                        JOptionPane.showMessageDialog(this, "You have already played this game!", "Action Blocked", JOptionPane.WARNING_MESSAGE);
+                        return;
+                    }
+
+                    models.dto.UserGameDto dto = new models.dto.UserGameDto(
+                            dashboard.getActiveUserId(),
+                            targetGameId,
+                            false, false, false,
+                            true, platCheck.isSelected(), // wishlist active
+                            null, null, null
                     );
 
-                    dashboard.addGameToLibrary(newDetail);
-                    refreshWishlist();
+                    userGamesDao.saveUserGame(dto);
+
+                    dashboard.loadGlobalCatalog();
+                    dashboard.loadLibraryFromDatabase();
+                    refreshWishlist(); // Reload local list model
                 }
             }
         }
