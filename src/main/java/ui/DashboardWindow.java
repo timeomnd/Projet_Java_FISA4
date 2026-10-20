@@ -1,9 +1,10 @@
 package ui;
 
+import dao.GameDao;
+import dao.UserGamesDao;
 import models.Game;
-import models.UserAccount;
 import models.UserGameDetail;
-import models.Registration;
+import models.dto.GameDto;
 
 import javax.swing.*;
 import java.awt.*;
@@ -14,6 +15,7 @@ import java.util.List;
 
 public class DashboardWindow extends BaseWindow implements ActionListener {
 
+    private int activeUserId; // Stores the logged-in user ID
     private JButton wishlistButton;
     private JButton addGameButton;
     private JButton viewDetailsButton;
@@ -23,20 +25,23 @@ public class DashboardWindow extends BaseWindow implements ActionListener {
     private DefaultListModel<Game> listModel;
 
     private List<UserGameDetail> library;
-
-    // NOUVEAU : Le catalogue global de la BDD
     private List<Game> globalCatalog;
 
-    public DashboardWindow() {
+    public DashboardWindow(int activeUserId) {
         super("My Games Library - Dashboard", 700, 500);
-        library = new ArrayList<>();
-        globalCatalog = new ArrayList<>();
+        this.activeUserId = activeUserId;
+        this.library = new ArrayList<>();
+        this.globalCatalog = new ArrayList<>();
 
-        loadGlobalCatalog(); // Charge tous les jeux de la BDD
-        loadMockData();      // Charge la bibliothèque de l'utilisateur
+        loadGlobalCatalog();
+        loadLibraryFromDatabase();
 
         refreshList(false);
         this.setVisible(true);
+    }
+
+    public int getActiveUserId() {
+        return activeUserId;
     }
 
     @Override
@@ -90,54 +95,42 @@ public class DashboardWindow extends BaseWindow implements ActionListener {
         this.add(mainPanel);
     }
 
-    // --- NOUVELLE MÉTHODE ---
-    private void loadGlobalCatalog() {
-        // Dans la version finale, tu appelleras ton GameDao ici :
-        // List<GameDto> dtos = new GameDao().getAllGames();
-        // for(GameDto dto : dtos) { globalCatalog.add(new Game(dto.getId(), dto.getTitle(), dto.getCover())); }
-
-        // Simulation du catalogue BDD pour tester le filtre :
-        globalCatalog.add(new Game(1, "Elden Ring", "/covers/eldenring.jpeg"));
-        globalCatalog.add(new Game(2, "The Last of Us", "/covers/thelastofus.jpeg"));
-        globalCatalog.add(new Game(3, "Cyberpunk 2077", "/covers/cyberpunk.jpeg"));
-        globalCatalog.add(new Game(4, "Ghost of Tsushima", "/covers/default.jpeg"));
-        globalCatalog.add(new Game(5, "God of War", "/covers/default.jpeg"));
-        globalCatalog.add(new Game(6, "Grand Theft Auto V", "/covers/default.jpeg"));
+    public void loadGlobalCatalog() {
+        globalCatalog.clear();
+        GameDao gameDao = new GameDao();
+        List<GameDto> dtos = gameDao.getAllGames();
+        for(GameDto dto : dtos) {
+            globalCatalog.add(new Game(dto.getId(), dto.getTitle(), dto.getCoverPath()));
+        }
     }
 
-    private void loadMockData() {
-        Registration reg = new Registration(1, "John", "Doe", "john@email.com", "2026-10-15 10:00:00");
-        UserAccount user = new UserAccount(1, "admin", "1234", reg);
-
-        // L'utilisateur a déjà le jeu ID 1 dans sa bibliothèque
-        library.add(new UserGameDetail(1, true, true, true, false, false, 10, 8, 120.5, user, globalCatalog.get(0)));
+    public void loadLibraryFromDatabase() {
+        UserGamesDao userGamesDao = new UserGamesDao();
+        this.library = userGamesDao.getUserLibrary(activeUserId);
+        refreshList(platinumFilterCheckbox != null && platinumFilterCheckbox.isSelected());
     }
 
     private void refreshList(boolean onlyPlatinum) {
+        if (listModel == null) return;
+
         listModel.clear();
         for (UserGameDetail detail : library) {
             if (!detail.isWishlistGames()) {
-                if (onlyPlatinum) {
-                    if (detail.isPlatinum()) {
-                        listModel.addElement(detail.getGame());
-                    }
-                } else {
+                if (!onlyPlatinum || detail.isPlatinum()) {
                     listModel.addElement(detail.getGame());
                 }
             }
         }
     }
 
+    public int getLibrarySize() { return library.size(); }
+    public List<UserGameDetail> getLibrary() { return library; }
+    public List<Game> getGlobalCatalog() { return globalCatalog; }
+
     public void addGameToLibrary(UserGameDetail newGameDetail) {
         library.add(newGameDetail);
         refreshList(platinumFilterCheckbox.isSelected());
     }
-
-    public int getLibrarySize() { return library.size(); }
-    public List<UserGameDetail> getLibrary() { return library; }
-
-    // Fournit le catalogue global pour l'autocomplétion
-    public List<Game> getGlobalCatalog() { return globalCatalog; }
 
     @Override
     public void actionPerformed(ActionEvent e) {
@@ -175,25 +168,48 @@ public class DashboardWindow extends BaseWindow implements ActionListener {
         @Override
         public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
             JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+
             if (value instanceof Game) {
                 Game game = (Game) value;
                 label.setText(game.getTitle());
+
                 try {
                     ImageIcon originalIcon = null;
                     String coverPath = game.getCover();
-                    if (coverPath.startsWith("/")) {
-                        java.net.URL imageUrl = getClass().getResource(coverPath);
-                        if (imageUrl != null) originalIcon = new ImageIcon(imageUrl);
-                    } else {
-                        originalIcon = new ImageIcon(coverPath);
+
+                    if (coverPath == null || coverPath.isEmpty()) {
+                        label.setIcon(null);
+                        return label;
                     }
+
+                    if (coverPath.startsWith("/")) {
+                        // Image intégrée au projet (ex: /covers/default.jpeg)
+                        java.net.URL imageUrl = getClass().getResource(coverPath);
+                        if (imageUrl != null) {
+                            originalIcon = new ImageIcon(imageUrl);
+                        } else {
+                            System.err.println("IMAGE INTROUVABLE DANS LE PROJET : " + coverPath + " (Vérifie que le dossier est bien dans src/)");
+                        }
+                    } else {
+                        // Image chargée depuis le PC (ex: C:\Users\Images\jaquette.png)
+                        java.io.File file = new java.io.File(coverPath);
+                        if (file.exists()) {
+                            originalIcon = new ImageIcon(coverPath);
+                        } else {
+                            System.err.println("IMAGE INTROUVABLE SUR LE PC : " + coverPath);
+                        }
+                    }
+
                     if (originalIcon != null && originalIcon.getIconWidth() > 0) {
                         Image scaledImage = originalIcon.getImage().getScaledInstance(50, 70, Image.SCALE_SMOOTH);
                         label.setIcon(new ImageIcon(scaledImage));
                     } else {
                         label.setIcon(null);
                     }
-                } catch (Exception ex) { label.setIcon(null); }
+                } catch (Exception ex) {
+                    System.err.println("Erreur de chargement pour " + game.getTitle() + " : " + ex.getMessage());
+                    label.setIcon(null);
+                }
             }
             return label;
         }

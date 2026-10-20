@@ -1,5 +1,6 @@
 package ui;
 
+import dao.GameDao;
 import models.Game;
 import models.UserGameDetail;
 
@@ -52,11 +53,9 @@ public class AddGameWindow extends BaseWindow implements ActionListener {
         titleField = new JTextField();
         suggestionMenu = new JPopupMenu();
 
-        // CORRECTION 1 : Force le menu à être par-dessus tout (empêche le bouton Browse de voler le clic)
         suggestionMenu.setLightWeightPopupEnabled(false);
         suggestionMenu.setFocusable(false);
 
-        // CORRECTION 2 : DocumentListener pour un filtre 100% en temps réel
         titleField.getDocument().addDocumentListener(new DocumentListener() {
             @Override public void insertUpdate(DocumentEvent e) { filterSuggestions(); }
             @Override public void removeUpdate(DocumentEvent e) { filterSuggestions(); }
@@ -191,20 +190,24 @@ public class AddGameWindow extends BaseWindow implements ActionListener {
             return;
         }
 
-        for (UserGameDetail detail : dashboard.getLibrary()) {
-            if (selectedCatalogGame != null) {
-                if (detail.getGame().getId() == selectedCatalogGame.getId()) {
-                    JOptionPane.showMessageDialog(this, "This game is already in your Library or Wishlist!", "Duplicate Entry", JOptionPane.WARNING_MESSAGE);
-                    return;
-                }
-            } else {
-                if (detail.getGame().getTitle().equalsIgnoreCase(title)) {
-                    JOptionPane.showMessageDialog(this, "You already have a game with this title!", "Duplicate Entry", JOptionPane.WARNING_MESSAGE);
-                    return;
-                }
+        int targetGameId;
+
+        // 1. Check if game already exists or create it
+        if (selectedCatalogGame != null) {
+            targetGameId = selectedCatalogGame.getId();
+        } else {
+            // Insert new game into the global catalog
+            String finalCoverPath = (selectedCoverPath != null) ? selectedCoverPath : "/covers/default.jpeg";
+            GameDao gameDao = new GameDao();
+            targetGameId = gameDao.addCustomGame(title, finalCoverPath);
+
+            if(targetGameId == -1) {
+                JOptionPane.showMessageDialog(this, "Error creating the game in the database.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
             }
         }
 
+        // 2. Validate time played
         double timePlayed = 0.0;
         try {
             timePlayed = Double.parseDouble(timePlayedField.getText().trim());
@@ -213,21 +216,26 @@ public class AddGameWindow extends BaseWindow implements ActionListener {
             return;
         }
 
-        Game finalGameToSave;
-        if (selectedCatalogGame != null) {
-            finalGameToSave = selectedCatalogGame;
-        } else {
-            int newId = dashboard.getLibrarySize() + 100;
-            String finalCoverPath = (selectedCoverPath != null) ? selectedCoverPath : "/covers/default.jpeg";
-            finalGameToSave = new Game(newId, title, finalCoverPath);
-        }
-
-        UserGameDetail newDetail = new UserGameDetail(
-                finalGameToSave.getId(), playedCheck.isSelected(), platinumCheck.isSelected(), hundredPercentCheck.isSelected(),
-                false, false, (int) ratingSpinner.getValue(), (int) difficultySpinner.getValue(), timePlayed, null, finalGameToSave
+        // 3. Save to User Games using DTO
+        models.dto.UserGameDto dto = new models.dto.UserGameDto(
+                dashboard.getActiveUserId(),
+                targetGameId,
+                playedCheck.isSelected(),
+                platinumCheck.isSelected(),
+                hundredPercentCheck.isSelected(),
+                false, // wishlistGames
+                false, // wishlistPlatinum
+                (int) ratingSpinner.getValue(),
+                (int) difficultySpinner.getValue(),
+                timePlayed
         );
 
-        dashboard.addGameToLibrary(newDetail);
+        dao.UserGamesDao userGamesDao = new dao.UserGamesDao();
+        userGamesDao.saveUserGame(dto);
+
+        // 4. Reload everything and close
+        dashboard.loadGlobalCatalog(); // In case a new game was added
+        dashboard.loadLibraryFromDatabase();
         this.dispose();
     }
 }

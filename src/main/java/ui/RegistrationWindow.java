@@ -1,30 +1,28 @@
 package ui;
 
+import dao.UserDao;
+import models.dto.UserDto;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+// Removed LocalDateTime imports as the database handles timestamps automatically
 
 public class RegistrationWindow extends BaseWindow implements ActionListener {
 
-    // Form fields mapped to your MCD (image_c97c6b.png)
     private JTextField firstNameField;
     private JTextField lastNameField;
     private JTextField emailField;
     private JTextField usernameField;
-    private JPasswordField passwordField; // Hides the typed characters
+    private JPasswordField passwordField;
 
     private JButton registerButton;
     private JButton cancelButton;
 
     public RegistrationWindow() {
         super("Create an Account", 400, 400);
-
-        // Prevent closing the entire application, just this window
         this.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-
         this.setVisible(true);
     }
 
@@ -39,7 +37,6 @@ public class RegistrationWindow extends BaseWindow implements ActionListener {
         mainPanel.add(titleLabel, BorderLayout.NORTH);
 
         // --- CENTER PANEL (Form Grid) ---
-        // 5 rows, 2 columns for the labels and text fields
         JPanel formPanel = new JPanel(new GridLayout(5, 2, 10, 15));
 
         formPanel.add(new JLabel("First Name:"));
@@ -83,8 +80,8 @@ public class RegistrationWindow extends BaseWindow implements ActionListener {
     @Override
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == cancelButton) {
-            this.dispose(); // Close registration window
-            new LoginWindow(); // Re-open login window
+            this.dispose();
+            new LoginWindow();
         }
         else if (e.getSource() == registerButton) {
             registerUser();
@@ -92,16 +89,12 @@ public class RegistrationWindow extends BaseWindow implements ActionListener {
     }
 
     private void registerUser() {
-        // Retrieve data from fields
         String firstName = firstNameField.getText().trim();
         String lastName = lastNameField.getText().trim();
         String email = emailField.getText().trim();
         String username = usernameField.getText().trim();
-
-        // JPasswordField returns a char array for security, we convert it to String
         String password = new String(passwordField.getPassword());
 
-        // Basic validation: check if any field is empty
         if (firstName.isEmpty() || lastName.isEmpty() || email.isEmpty() || username.isEmpty() || password.isEmpty()) {
             JOptionPane.showMessageDialog(this,
                     "Please fill in all fields.",
@@ -110,21 +103,27 @@ public class RegistrationWindow extends BaseWindow implements ActionListener {
             return;
         }
 
-        // Simulate creation date generation for the `_created_at` field in your DB
-        String createdAt = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        // 1. Pack the form data into a Data Transfer Object
+        UserDto newUser = new UserDto(firstName, lastName, email, username, password);
 
-        // LATER: This is where you will call the DatabaseManager/DAO.
-        // It will need to do 2 INSERT queries:
-        // 1. INSERT INTO registration_form (first_name, last_name, email, _created_at)
-        // 2. INSERT INTO authentication (username, _password_hash, id_registration_form)
+        // 2. Call the backend to insert the user into the database
+        UserDao userDao = new UserDao();
+        boolean success = userDao.registerUser(newUser);
 
-        // For now, we just simulate a success message
-        JOptionPane.showMessageDialog(this,
-                "Account successfully created!\nWelcome " + firstName + "!",
-                "Registration Success",
-                JOptionPane.INFORMATION_MESSAGE);
+        if (success) {
+            JOptionPane.showMessageDialog(this,
+                    "Account successfully created!\nWelcome " + firstName + "!",
+                    "Registration Success",
+                    JOptionPane.INFORMATION_MESSAGE);
 
-        this.dispose(); // Close registration window
-        new LoginWindow(); // Go back to login so the user can log in
+            this.dispose();
+            new LoginWindow();
+        } else {
+            // Display an error if the username or email already exists, or if DB fails
+            JOptionPane.showMessageDialog(this,
+                    "Registration failed. Username or email might already exist.",
+                    "Database Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
 }
