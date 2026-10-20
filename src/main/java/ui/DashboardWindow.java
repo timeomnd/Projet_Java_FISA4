@@ -14,6 +14,7 @@ import java.util.List;
 
 public class DashboardWindow extends BaseWindow implements ActionListener {
 
+    private JButton wishlistButton;
     private JButton addGameButton;
     private JButton viewDetailsButton;
     private JButton logoutButton;
@@ -21,7 +22,6 @@ public class DashboardWindow extends BaseWindow implements ActionListener {
     private JList<Game> gameList;
     private DefaultListModel<Game> listModel;
 
-    // Collection to store user's games
     private List<UserGameDetail> library;
 
     public DashboardWindow() {
@@ -37,16 +37,26 @@ public class DashboardWindow extends BaseWindow implements ActionListener {
         JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
         mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
+        // --- TOP PANEL ---
         JPanel topPanel = new JPanel(new BorderLayout());
+
+        JPanel topLeftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         JLabel welcomeLabel = new JLabel("Welcome to your Game Library!");
         welcomeLabel.setFont(new Font("Arial", Font.BOLD, 16));
+
+        wishlistButton = new JButton("My Wishlist \uD83D\uDCDD");
+        wishlistButton.addActionListener(this);
+
+        topLeftPanel.add(welcomeLabel);
+        topLeftPanel.add(wishlistButton);
 
         platinumFilterCheckbox = new JCheckBox("Show only Platinum (100%) games");
         platinumFilterCheckbox.addActionListener(this);
 
-        topPanel.add(welcomeLabel, BorderLayout.WEST);
+        topPanel.add(topLeftPanel, BorderLayout.WEST);
         topPanel.add(platinumFilterCheckbox, BorderLayout.EAST);
 
+        // --- CENTER PANEL ---
         listModel = new DefaultListModel<>();
         gameList = new JList<>(listModel);
         gameList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -54,6 +64,7 @@ public class DashboardWindow extends BaseWindow implements ActionListener {
 
         JScrollPane scrollPane = new JScrollPane(gameList);
 
+        // --- BOTTOM PANEL ---
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
 
         addGameButton = new JButton("Add a Game");
@@ -82,34 +93,43 @@ public class DashboardWindow extends BaseWindow implements ActionListener {
         Game g1 = new Game(1, "Elden Ring", "/covers/eldenring.jpeg");
         Game g2 = new Game(2, "The Last of Us", "/covers/thelastofus.jpeg");
         Game g3 = new Game(3, "Cyberpunk 2077", "/covers/cyberpunk.jpeg");
+        Game g4 = new Game(4, "Ghost of Tsushima", "/covers/default.jpeg");
 
         library.add(new UserGameDetail(1, true, true, true, false, false, 10, 8, 120.5, user, g1));
         library.add(new UserGameDetail(2, true, false, false, false, false, 9, 4, 45.0, user, g2));
         library.add(new UserGameDetail(3, true, false, false, false, false, 8, 6, 80.0, user, g3));
+
+        // Wishlist Mock Data (wishlistGames = true)
+        library.add(new UserGameDetail(4, false, false, false, true, true, 0, 0, 0.0, user, g4));
     }
 
     private void refreshList(boolean onlyPlatinum) {
         listModel.clear();
         for (UserGameDetail detail : library) {
-            if (onlyPlatinum) {
-                if (detail.isPlatinum()) {
+            // Filtrage : n'afficher que les jeux qui NE SONT PAS dans la wishlist
+            if (!detail.isWishlistGames()) {
+                if (onlyPlatinum) {
+                    if (detail.isPlatinum()) {
+                        listModel.addElement(detail.getGame());
+                    }
+                } else {
                     listModel.addElement(detail.getGame());
                 }
-            } else {
-                listModel.addElement(detail.getGame());
             }
         }
     }
 
-    // Method called by AddGameWindow to inject the new game into the list
     public void addGameToLibrary(UserGameDetail newGameDetail) {
         library.add(newGameDetail);
         refreshList(platinumFilterCheckbox.isSelected());
     }
 
-    // Helper method for fake ID generation
     public int getLibrarySize() {
         return library.size();
+    }
+
+    public List<UserGameDetail> getLibrary() {
+        return library;
     }
 
     @Override
@@ -126,12 +146,13 @@ public class DashboardWindow extends BaseWindow implements ActionListener {
                 new LoginWindow();
             }
         }
+        else if (e.getSource() == wishlistButton) {
+            new WishlistWindow(this); // Ouvre la wishlist
+        }
         else if (e.getSource() == platinumFilterCheckbox) {
-            boolean isChecked = platinumFilterCheckbox.isSelected();
-            refreshList(isChecked);
+            refreshList(platinumFilterCheckbox.isSelected());
         }
         else if (e.getSource() == addGameButton) {
-            // Opens the complete form instead of the small dialog
             new AddGameWindow(this);
         }
         else if (e.getSource() == viewDetailsButton) {
@@ -150,7 +171,6 @@ public class DashboardWindow extends BaseWindow implements ActionListener {
                         break;
                     }
                 }
-
                 if (selectedDetail != null) {
                     new GameDetailWindow(selectedDetail);
                 }
@@ -167,10 +187,19 @@ public class DashboardWindow extends BaseWindow implements ActionListener {
                 Game game = (Game) value;
                 label.setText(game.getTitle());
 
+                // --- LOGIQUE POUR GÉRER RESSOURCE INTERNE / PC LOCAL ---
                 try {
-                    java.net.URL imageUrl = getClass().getResource(game.getCover());
-                    if (imageUrl != null) {
-                        ImageIcon originalIcon = new ImageIcon(imageUrl);
+                    ImageIcon originalIcon = null;
+                    String coverPath = game.getCover();
+
+                    if (coverPath.startsWith("/")) {
+                        java.net.URL imageUrl = getClass().getResource(coverPath);
+                        if (imageUrl != null) originalIcon = new ImageIcon(imageUrl);
+                    } else {
+                        originalIcon = new ImageIcon(coverPath); // Charge depuis le PC
+                    }
+
+                    if (originalIcon != null && originalIcon.getIconWidth() > 0) {
                         Image scaledImage = originalIcon.getImage().getScaledInstance(50, 70, Image.SCALE_SMOOTH);
                         label.setIcon(new ImageIcon(scaledImage));
                     } else {
@@ -182,5 +211,6 @@ public class DashboardWindow extends BaseWindow implements ActionListener {
             }
             return label;
         }
+
     }
 }

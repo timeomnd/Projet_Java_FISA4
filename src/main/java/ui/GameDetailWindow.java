@@ -106,12 +106,20 @@ public class GameDetailWindow extends BaseWindow {
         ratingLabel.setText("Rating: " + gameDetail.getGameRating() + " / 10");
         difficultyLabel.setText("Platinum Difficulty: " + gameDetail.getPlatinumDifficulty() + " / 10");
         timePlayedLabel.setText("Time Played: " + gameDetail.getTimePlayedHours() + " hours");
-
-        // Load Image (same logic as the Dashboard list)
+            
+        // Load Image (handles both internal resources and local PC files)
         try {
-            URL imageUrl = getClass().getResource(gameDetail.getGame().getCover());
-            if (imageUrl != null) {
-                ImageIcon originalIcon = new ImageIcon(imageUrl);
+            ImageIcon originalIcon = null;
+            String coverPath = gameDetail.getGame().getCover();
+
+            if (coverPath.startsWith("/")) {
+                URL imageUrl = getClass().getResource(coverPath);
+                if (imageUrl != null) originalIcon = new ImageIcon(imageUrl);
+            } else {
+                originalIcon = new ImageIcon(coverPath); // Charge depuis le PC
+            }
+
+            if (originalIcon != null && originalIcon.getIconWidth() > 0) {
                 Image scaledImage = originalIcon.getImage().getScaledInstance(150, 210, Image.SCALE_SMOOTH);
                 coverLabel.setIcon(new ImageIcon(scaledImage));
             } else {
