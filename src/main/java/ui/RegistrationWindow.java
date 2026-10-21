@@ -103,10 +103,10 @@ public class RegistrationWindow extends BaseWindow implements ActionListener {
             return;
         }
 
-        // 1. Pack the form data into a Data Transfer Object
+        // Pack the form data into a Data Transfer Object
         UserDto newUser = new UserDto(firstName, lastName, email, username, password);
 
-        // 2. Call the backend to insert the user into the database
+        // Call the backend to insert the user into the database
         UserDao userDao = new UserDao();
         boolean success = userDao.registerUser(newUser);
 

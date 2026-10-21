@@ -116,7 +116,7 @@ public class GameDetailWindow extends BaseWindow {
                 URL imageUrl = getClass().getResource(coverPath);
                 if (imageUrl != null) originalIcon = new ImageIcon(imageUrl);
             } else {
-                originalIcon = new ImageIcon(coverPath); // Charge depuis le PC
+                originalIcon = new ImageIcon(coverPath); // Loading image from PC
             }
 
             if (originalIcon != null && originalIcon.getIconWidth() > 0) {
