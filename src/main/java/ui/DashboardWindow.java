@@ -188,7 +188,7 @@ public class DashboardWindow extends BaseWindow implements ActionListener {
                         if (imageUrl != null) {
                             originalIcon = new ImageIcon(imageUrl);
                         } else {
-                            System.err.println("IMAGE INTROUVABLE DANS LE PROJET : " + coverPath + " (Vérifie que le dossier est bien dans src/)");
+                            System.err.println("IMAGE INTROUVABLE DANS LE PROJET : " + coverPath);
                         }
                     } else {
                         // Image loaded from the PC

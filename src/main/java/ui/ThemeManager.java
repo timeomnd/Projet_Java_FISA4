@@ -7,7 +7,7 @@ public class ThemeManager {
 
     public static void applyPlayStationTheme() {
         try {
-            // 1. Activer le thème moderne "Nimbus" de Java
+            // Enable Java's modern "Nimbus" theme
             for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
                 if ("Nimbus".equals(info.getName())) {
                     UIManager.setLookAndFeel(info.getClassName());
@@ -15,32 +15,32 @@ public class ThemeManager {
                 }
             }
 
-            // 2. Définir la palette de couleurs PlayStation
-            Color psDarkBg = new Color(15, 15, 25);         // Fond sombre profond
-            Color psLightBg = new Color(25, 25, 35);        // Fond des listes et champs texte
-            Color psBlue = new Color(0, 67, 156);           // Bleu classique PlayStation
-            Color textWhite = new Color(240, 240, 240);     // Texte blanc cassé (plus doux pour les yeux)
-            Color platinumColor = new Color(180, 190, 200); // Gris bleuté pour le platine
+            // Define the PlayStation color palette
+            Color psDarkBg = new Color(15, 15, 25);         // Deep dark background
+            Color psLightBg = new Color(25, 25, 35);        // Background for lists and text fields
+            Color psBlue = new Color(0, 67, 156);           // Classic PlayStation blue
+            Color textWhite = new Color(240, 240, 240);     // Off-white text (easier on the eyes)
+            Color platinumColor = new Color(180, 190, 200); // Blue-grey for platinum
 
-            // 3. Injecter les couleurs dans le système
-            UIManager.put("control", psDarkBg);                  // Fond de base des fenêtres
-            UIManager.put("nimbusBase", psBlue);                 // Couleur principale (barres, scroll, etc.)
-            UIManager.put("nimbusLightBackground", psLightBg);   // Fond des JList et JTextField
-            UIManager.put("nimbusSelectionBackground", psBlue);  // Couleur quand on clique sur un jeu
-            UIManager.put("text", textWhite);                    // Couleur par défaut du texte
+            // Inject colors into the system
+            UIManager.put("control", psDarkBg);                  // Base background for windows
+            UIManager.put("nimbusBase", psBlue);                 // Main color (scrollbars, etc.)
+            UIManager.put("nimbusLightBackground", psLightBg);   // Background for JList and JTextField
+            UIManager.put("nimbusSelectionBackground", psBlue);  // Color when a game is clicked/selected
+            UIManager.put("text", textWhite);                    // Default text color
 
-            // Personnalisation des textes spécifiques
+            // Customization for specific texts
             UIManager.put("Label.foreground", textWhite);
             UIManager.put("CheckBox.foreground", textWhite);
             UIManager.put("TitledBorder.titleColor", psBlue);
 
-            // Personnalisation des boutons
+            // Button customization
             UIManager.put("Button.background", psBlue);
             UIManager.put("Button.textForeground", Color.WHITE);
             UIManager.put("Button.font", new Font("Arial", Font.BOLD, 12));
 
         } catch (Exception e) {
-            System.out.println("Erreur lors du chargement du thème : " + e.getMessage());
+            System.out.println("Error loading theme: " + e.getMessage());
         }
     }
 }

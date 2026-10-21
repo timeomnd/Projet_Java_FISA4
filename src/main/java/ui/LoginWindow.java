@@ -16,7 +16,7 @@ public class LoginWindow extends BaseWindow implements ActionListener {
     private JButton registerButton;
 
     public LoginWindow() {
-        // Fenêtre un peu plus haute (550px) pour laisser de la place au grand logo
+
         super("Platinum Masters - Login", 400, 550);
         this.setVisible(true);
     }
@@ -65,7 +65,7 @@ public class LoginWindow extends BaseWindow implements ActionListener {
         passwordField = new JPasswordField();
         formPanel.add(passwordField);
 
-        // Un sous-panneau pour éviter que les champs de texte ne s'étirent trop en hauteur
+
         JPanel centerWrapper = new JPanel(new BorderLayout());
         centerWrapper.add(formPanel, BorderLayout.NORTH);
         mainPanel.add(centerWrapper, BorderLayout.CENTER);
