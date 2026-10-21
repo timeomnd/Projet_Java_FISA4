@@ -183,7 +183,7 @@ public class DashboardWindow extends BaseWindow implements ActionListener {
                     }
 
                     if (coverPath.startsWith("/")) {
-                        // Image intégrée au projet (ex: /covers/default.jpeg)
+                        // Project integrated image
                         java.net.URL imageUrl = getClass().getResource(coverPath);
                         if (imageUrl != null) {
                             originalIcon = new ImageIcon(imageUrl);
@@ -191,7 +191,7 @@ public class DashboardWindow extends BaseWindow implements ActionListener {
                             System.err.println("IMAGE INTROUVABLE DANS LE PROJET : " + coverPath + " (Vérifie que le dossier est bien dans src/)");
                         }
                     } else {
-                        // Image chargée depuis le PC (ex: C:\Users\Images\jaquette.png)
+                        // Image loaded from the PC
                         java.io.File file = new java.io.File(coverPath);
                         if (file.exists()) {
                             originalIcon = new ImageIcon(coverPath);

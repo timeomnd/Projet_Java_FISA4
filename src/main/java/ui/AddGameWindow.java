@@ -19,7 +19,7 @@ public class AddGameWindow extends BaseWindow implements ActionListener {
     private JTextField titleField;
     private JPopupMenu suggestionMenu;
     private Game selectedCatalogGame = null;
-    private boolean isSelecting = false; // Sécurité pour le clic
+    private boolean isSelecting = false; // Security for the click
 
     private JCheckBox playedCheck;
     private JCheckBox platinumCheck;
@@ -115,11 +115,11 @@ public class AddGameWindow extends BaseWindow implements ActionListener {
         this.add(mainPanel);
     }
 
-    // Méthode appelée à chaque milliseconde où le texte change
+    // Method called every millisecond where the text change
     private void filterSuggestions() {
         if (isSelecting) return; // Si on vient de cliquer sur un jeu, on ne relance pas le filtre
 
-        // On utilise invokeLater pour ne pas bloquer l'interface graphique pendant la frappe
+        // We use invokeLater to not block the graphic interface while the typing
         SwingUtilities.invokeLater(() -> {
             selectedCatalogGame = null;
             chooseCoverButton.setEnabled(true);
@@ -140,7 +140,7 @@ public class AddGameWindow extends BaseWindow implements ActionListener {
                 if (lowerTitle.startsWith(text) || lowerTitle.contains(" " + text)) {
                     JMenuItem item = new JMenuItem(g.getTitle());
 
-                    // On utilise le vrai ActionListener, le clic est maintenant garanti
+                    // We use the real ActionListerner, the click is now garantee
                     item.addActionListener(ev -> {
                         isSelecting = true;
                         titleField.setText(g.getTitle());
@@ -157,7 +157,7 @@ public class AddGameWindow extends BaseWindow implements ActionListener {
             }
 
             if (found) {
-                suggestionMenu.pack(); // Ajuste la taille de la boîte
+                suggestionMenu.pack(); // Ajusting the box size
                 suggestionMenu.show(titleField, 0, titleField.getHeight());
             } else {
                 suggestionMenu.setVisible(false);
@@ -172,7 +172,7 @@ public class AddGameWindow extends BaseWindow implements ActionListener {
         }
         else if (e.getSource() == chooseCoverButton) {
             JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setFileFilter(new FileNameExtensionFilter("Images (JPG, PNG)", "jpg", "jpeg", "png"));
+            fileChooser.setFileFilter(new FileNameExtensionFilter("Images (JPG, PNG)", "jpg", "jpeg", "png")); // Just in case
             if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
                 selectedCoverPath = fileChooser.getSelectedFile().getAbsolutePath();
                 coverPathLabel.setText(" " + fileChooser.getSelectedFile().getName());
@@ -192,7 +192,7 @@ public class AddGameWindow extends BaseWindow implements ActionListener {
 
         int targetGameId;
 
-        // 1. Check if game already exists or create it
+        // Check if game already exists or create it
         if (selectedCatalogGame != null) {
             targetGameId = selectedCatalogGame.getId();
         } else {
@@ -207,7 +207,7 @@ public class AddGameWindow extends BaseWindow implements ActionListener {
             }
         }
 
-        // 2. Validate time played
+        // Validate time played
         double timePlayed = 0.0;
         try {
             timePlayed = Double.parseDouble(timePlayedField.getText().trim());
@@ -216,7 +216,7 @@ public class AddGameWindow extends BaseWindow implements ActionListener {
             return;
         }
 
-        // 3. Save to User Games using DTO
+        // Save to User Games using DTO
         models.dto.UserGameDto dto = new models.dto.UserGameDto(
                 dashboard.getActiveUserId(),
                 targetGameId,
@@ -233,7 +233,7 @@ public class AddGameWindow extends BaseWindow implements ActionListener {
         dao.UserGamesDao userGamesDao = new dao.UserGamesDao();
         userGamesDao.saveUserGame(dto);
 
-        // 4. Reload everything and close
+        // Reload everything and close
         dashboard.loadGlobalCatalog(); // In case a new game was added
         dashboard.loadLibraryFromDatabase();
         this.dispose();
